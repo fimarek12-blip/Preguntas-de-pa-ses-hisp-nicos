@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Quiz de Vocabulario Personalizado - Cine</title>
+    
+    <style>
+        :root { 
+            --p: #2c3e50;
+            --a: #3498db; 
+            --bg: #f4f7f6; 
+            --ok: #27ae60; 
+            --bad: #e74c3c; 
+            --gray: #7f8c8d;
+        }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            padding: 20px 0;
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            color: var(--p);
+            margin-bottom: 15px;
+            font-size: 1.8rem;
+            text-align: center;
+        }
+
+        .row-selector {
+            display: flex;
+            gap: 10px;
+            width: 90vw;
+            max-width: 450px;
+            margin-bottom: 15px;
+        }
+
+        .row-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid var(--p);
+            border-radius: 10px;
+            background: white;
+            color: var(--p);
+            font-weight: bold;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .row-btn.active {
+            background: var(--p);
+            color: white;
+        }
+
+        .quiz-container { 
+            width: 90vw;
+            max-width: 450px; 
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+            margin-bottom: 15px;
+        }
+
+        .question-box {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: var(--p);
+            text-align: center;
+            margin-bottom: 20px;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .option-btn {
+            width: 100%;
+            padding: 14px;
+            font-size: 1rem;
+            text-align: left;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #333;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            background: #f0f4f8;
+            border-color: var(--a);
+        }
+
+        .option-btn.correct {
+            background: var(--ok) !important;
+            color: white !important;
+            border-color: var(--ok) !important;
+            font-weight: bold;
+        }
+
+        .option-btn.incorrect {
+            background: var(--bad) !important;
+            color: white !important;
+            border-color: var(--bad) !important;
+        }
+
+        /* CORRECCIÓN INTERACTIVA PARA EL CONTENEDOR FLEXIBLE DE LA TARJETA */
+        .tarjeta-flash {
+            width: 100%;
+            perspective: 1000px;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+
+        .tarjeta-interna {
+            position: relative;
+            width: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            display: grid; /* Cambiado a Grid para que el contenedor mida lo mismo que sus caras */
+        }
+
+        .tarjeta-flash.volteada .tarjeta-interna {
+            transform: rotateY(180deg);
+        }
+
+        .cara {
+            grid-area: 1 / 1 / 2 / 2; /* Apila una cara sobre la otra de forma flexible */
+            width: 100%;
+            min-height: 220px;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 12px;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            max-height: 380px; /* Evita que crezca infinitamente en pantallas pequeñas */
+            overflow-y: auto;  /* Si el texto es gigantesco en móviles, añade scroll interno limpio */
+        }
+
+        .cara.frente {
+            background: #fff;
+            border: 2px solid var(--a);
+            color: var(--p);
+        }
+
+        .cara.dorso {
+            background: #eef7fc;
+            border: 2px solid var(--ok);
+            color: #1b5e20;
+            transform: rotateY(180deg);
+        }
+
+        .indicador {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--gray);
+            margin-bottom: 10px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .contenido-tarjeta {
+            font-size: 1.1rem;
+            font-weight: 500;
+            line-height: 1.5;
+            text-align: justify;
+        }
+
+        .controles-tarjeta {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .btn-tarjeta {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            color: white;
+            font-size: 0.9rem;
+        }
+        .btn-tarjeta.mal { background: var(--bad); }
+        .btn-tarjeta.bien { background: var(--ok); }
+
+        .controls { 
+            display: flex;
+            gap: 10px; 
+            width: 90vw; 
+            max-width: 450px;
+            margin-top: 5px;
+        }
+
+        button.nav-btn { 
+            flex: 1;
+            padding: 15px 10px; 
+            border: none; 
+            border-radius: 12px; 
+            background: var(--p); 
+            color: white; 
+            font-size: 1rem; 
+            font-weight: bold;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        button.nav-btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        .info { margin-top: 12px; font-weight: bold; color: #7f8c8d; text-align: center;}
+
+        .btn-reset {
+            background: var(--gray);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 10px;
+            width: 90vw;
+            max-width: 450px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+        .btn-reset:hover { opacity: 1;}
+
+        @media (max-height: 600px) {
+            .question-box { font-size: 1.1rem; min-height: 40px; }
+            .option-btn { padding: 10px; font-size: 0.9rem;}
+        }
+    </style>
+</head>
+<body>
+
+    <h1>América Latina - Quiz & Tarjetas</h1>
+
+    <div class="row-selector">
+        <button class="row-btn active" id="btn-fila-no" onclick="setFila('no')">Por aprender (<span id="count-no">0</span>)</button>
+        <button class="row-btn" id="btn-fila-si" onclick="setFila('si')">Ya aprendidas (<span id="count-si">0</span>)</button>
+    </div>
+
+    <div class="quiz-container" id="quiz-container">
+        </div>
+
+    <div class="info" id="status">0 / 0</div>
+
+    <div class="controls">
+        <button class="nav-btn" onclick="prev()">⬅ Ant.</button>
+        <button class="nav-btn" onclick="shuffle()">🔀 Mezclar</button>
+        <button class="nav-btn" id="btn-next" onclick="next()">Sig. ➡</button>
+    </div>
+
+    <button class="btn-reset" onclick="reiniciarProgreso()">🗑 Reiniciar todo el progreso</button>
+
+<script>
+    const todasLasPalabras = [
+        {
+            tipo: "quiz",
+            q: "Které tvrzení je pravdivé?", 
+            options: ["Z důsledku španělské kolonizace, původní populace Latinské Ameriky až na výjimky zemřela.", "Náhuatl, kečuánština nebo guaraní jsou jazyky, kterými mluvili původní obyvatelé před příchodem Španělů. Dnes už tyto jazyky neexistují.", "Kolem 97% původních obyvatel Ameriky žije v Latinské Americe.", "Nejhustší osídlení původních obyvatel můžeme najít v Anglosaské Americe (Kanada, USA). Jedná se o Apači, Čejeny pod."], 
+            correct: 0 
+        },
+        {
+            tipo: "quiz",
+            q: "Objevení a dobytí Ameriky odpovídají expansionistickým tendencím iberských království na konci 15. století.", 
+            options: ["Ne, Španělsko právě spadlo pod nadvládu Habsburků a soustředilo se na vnitřní občanské války.", "Ano, po ukončení Reconquisty Aragon expandoval na Středozemské moře, Portugalsko po africkém pobřeží a pro Kastilii do jisté míry bylo dobytí Ameriky pokračování středověké politiky.", "Ano, Kryštof Kolumbus byl španělský rytíř a dokonce přirovnával své výpravy s křížovými taženími.", "Ne, po pádu Granady byl Pyrenejský poloostrov poměrně stabilizovaný a žádné vojenské výpravy se už v té době nepodnikaly."], 
+            correct: 1
+        },
+        {
+            tipo: "quiz",
+            q: "Mezinárodní smlouvu o svobodném trhu podepsaly v roce 1993:", 
+            options: ["Peru, Bolívie a Ekvádor.", "Španělsko a Mexiko.", "Mexiko, Argentina a Brazílie.", "Mexiko, Kanada a USA."], 
+            correct: 3
+        },
+        {
+            tipo: "quiz",
+            q: "Označte osobnost, která není spojená s bojem o nezávislost španělských kolonií:", 
+            options: ["Simón Bolívar.", "Miguel Hidalgo.", "Porfirio Díaz.", "José de San Martín."], 
+            correct: 2
+        },
+        {
+            tipo: "quiz",
+            q: "Název smlouvy, \"která ukončila mexicko-americkou válku. Podle této smlouvy přenechalo Mexiko Spojeným státům americkým území o velikosti 1,36 milionu km2, což představovalo více než polovinu tehdejší mexické rozlohy.\" (Wikipedie)", 
+            options: ["Monroeová doktrína (1823).", "Smlouva z Guadalupe-Hidalgo (1898).", "Tordesillaská smlouva (1848).", "Smlouva z Guadalupe-Hidalgo (1848)."], 
+            correct: 3 
+        },
+        {
+            tipo: "quiz",
+            q: "Pojem 'Latinská Amerika' použil poprvé:",
+            options: ["Prezident USA James Monroe ve svém proslulém proslovu 'Amerika Američanům'.", "Francouzský císař Napoleon III v rámci koloniální expanze evropských velmocí v druhé polovině 19. století.", "Mexický spisovatel and politik José Vasconcelos ve své eseji La raza cósmica.", "Císař Karel V. při založení Consejo de Indias v roce 1524."],
+            correct: 1
+        },
+        {
+            tipo: "quiz",
+            q: "Jedna z příčin boje o nezávislost amerických kolonií od španělské koruny byl/a/o:",
+            options: ["Tajná spolupráce Kreolů a Mesticů s holandskými piráty.", "Rozšíření marxistické ideologie po celém kontinentu.", "Vylučování Kreolů z nejvyšších pozic koloniální správy.", "Potlačení indiánských jazyků jako kečuánština či maya-quiché ze strany metropolitní správy."],
+            correct: 2
+        },
+        {
+            tipo: "quiz",
+            q: "Proti komu bojovala Paraguay v tzv. Paraguayské válce (1864-1870)?",
+            options: ["Proti trojčlenné alianci Argentiny, Bolívie a Brazílie.", "Proti Argentině.", "Jednalo se o občanskou válku.", "Proti trojčlenné alianci Argentiny, Brazílie a Uruguaye."],
+            correct: 3
+        },
+        {
+            tipo: "quiz",
+            q: "Které město leží na Tichomořském pobřeží?",
+            options: ["Buenos Aires.", "Havana.", "Veracruz.", "Lima."],
+            correct: 3
+        },
+        {
+            tipo: "quiz",
+            q: "Významné milníky, které se často označují jako začátek a konec bojů za nezávislost španělských kolonií na americkém kontinentu jsou:",
+            options: ["Vydání Dopisu z Jamajky (1815) a smrt Simóna Bolívara (1830).", "Smrt Franciska de Mirandy (1816) a nezávislost Texasu (1835).", "Revolución de Mayo (Argentina, 1810) nebo Grito de Dolores (Mexiko, 1810) a bitva u Ayacucha (Peru, 1824).", "Nezávislost Haiti (1804) a Plan de Iguala (Mexiko, 1821)."],
+            correct: 2
+        },
+        {
+            tipo: "quiz",
+            q: "Který filozofický směr ovlivnil názory Simóna Bolívara, které můžeme najít v jeho Dopisu z Jamajky (Carta de Jamaica)?",
+            options: ["Osvícenství.", "Indigenismus.", "Nacionalismus.", "Magický realismus."],
+            correct: 0
+        },
+        {
+            tipo: "quiz",
+            q: "Jak se nazývá vojenské diktatuře v Argentině v letech 1976-1983?",
+            options: ["Montoneros.", "Operace Condor (Operación Cóndor).", "Gaučovská revoluce (Revolución Gaucha).", "Špinavá válka (Guerra Sucia)."],
+            correct: 3
+        },
+        {
+            tipo: "quiz",
+            q: "Kdo založil v Peru ve 20. letech politické hnutí indigenismo?",
+            options: ["Emiliano Zapata.", "Mario Vargas Llosa.", "José Carlos Mariátegui.", "Benito Juárez."],
+            correct: 2
+        },
+        {
+            tipo: "quiz",
+            q: "Kde se usedli dříve nomádští Aztékové v roce 1325?",
+            options: ["Na pobřeží jezera Texcoco.", "V mayském městu Tenochtitlán.", "V oblasti Chichén Itzá, u Mexického zálivu.", "V legendární oblasti Aztlán, na dnešním jihozápadě USA."],
+            correct: 0
+        },
+        {
+            tipo: "quiz",
+            q: "Kterou z těchto postav nespojíte s obdobím caudillismu?",
+            options: ["Fidel Castro.", "Antonio López de Santa Anna.", "Juan Manuel de Rosas.", "José Gaspar Rodríguez de Francia."],
+            correct: 0
+        },
+        {
+            tipo: "quiz",
+            q: "Označení pro politický systém, který převládl v nově vzniklých hispanoamerických republikách v první polovině 19. století, systém 'založený na autoritě a politické či vojenské síle, popřípadě charismatu jedné osobnosti' (Wikipedie):",
+            options: ["Civilizace a barbarství.", "Panamerikanismus.", "Caudillismus.", "Indigenismus."],
+            correct: 2
+        },
+        {
+            tipo: "quiz",
+            q: "Kterým souborem zákonů chtěla španělská koruna chránit práva indiánského obyvatelstva před vykořisťováním a nelidským chování dobyvatelů a kolonistů?",
+            options: ["Capitulaciones de Santa Fe.", "Leyes Nuevas z roku 1753.", "Leyes Nuevas z roku 1542.", "Consejo de Indias z roku 1542."],
+            correct: 2
+        },
+        {
+            tipo: "quiz",
+            q: "Název strany, která vznikla po Mexické revoluci a vládla zemi od roku 1929 do roku 2000:",
+            options: ["MZLN: Movimiento Zapatista de Liberación Nacional.", "APRA: Alianza Popular Restauracionista de América.", "PRI: Partido Revolucionario Institucional.", "PCM: Partido Comunista de México."],
+            correct: 2
+        },
+        {
+            tipo: "quiz",
+            q: "Vasco Núñez de Balboa",
+            options: ["dobyl aztéckou říši v roce 1521.", "podnikla výpravu kolem světa v roce 1522.", "byl kapitánem jedny z Kolumbových lodí při objevení Ameriky.", "objevil v roce 1513 'Mar del Sur', tedy Tichý oceán, a tím potvrdil, že Amerika je samostatný kontinent, a ne západní část Asie."],
+            correct: 3
+        },
+        {
+            tipo: "quiz",
+            q: "Vyberte správné jméno společenské a hospodářské instituce, která byla základ kolonizace v rané době dobytí Ameriky. Esta instituce byla založena na nucené práci a proto byl tento systém od začátku 16. století kritizován.",
+            options: ["Encomienda.", "Reducción.", "Eldorado.", "Gobernación."],
+            correct: 0
+        },
+        {
+            tipo: "quiz",
+            q: "Ekvador má hranice s:",
+            options: ["Peru a Kolumbií.", "Peru, Kolumbií a Brazílií.", "Bolivíí a Hondurasem.", "Peru, Chile, Bolivií a Paraguayí."],
+            correct: 0
+        },
+        {
+            tipo: "quiz",
+            q: "Dominikánský řeholník, misionář, teolog, právník, historik a antropolog, autor knih O zemích indijských pustošení a vylidňování zpráva nejstručnější nebo Historia de las Indias, zvaný 'Ochránce Indiánů':",
+            options: ["Luis de Sepúlveda.", "Antonio de Montesinos.", "Bartolomé de Las Casas.", "Simón Bolívar."],
+            correct: 2
+        },
+        {
+            tipo: "quiz",
+            q: "Kdy bylo založeno místokrálovství Nového Španělska?",
+            options: ["Žádné místokrálovství Nového Španělska neexistovalo. Provincie Mexiko byla založena v roce 1519.", "V roce 1535. Sídlem místokrále bylo město Mexiko.", "V roce 1492. Sídlem místokrále bylo město Santo Domingo.", "V roce 1778, v rámci bourbonských reforem ve správě amerických kolonií."],
+            correct: 1
+        },
+        {
+            tipo: "quiz",
+            q: "Čím byly FARC, ELN, Sendero Luminoso nebo Montoneros?",
+            options: ["Gerily a hnutí, které v různých zemích Jižní Ameriky ozbrojeným bojem usilovaly o komunistickou revoluci v období Studené války.", "Americké vojenské služby, které tajně pomohly nastolit vojenské režimy v Jižní Americe.", "Levicové strany, které kolem roku 2000 zvítězily ve volbách v různých zemích.", "Orchestry populární hudby, které byly velmi slavné v 50. letech."],
+            correct: 0
+        },
+        {
+            tipo: "quiz",
+            q: "Který druh podnebí nenajdeme v Latinské Americe?",
+            options: ["V Latinské Americe nejsou pouště, i když kácení lesů v Amazonce může vést k tzv. deforestizaci.", "Subpolární podnebí.", "Vysokohorské podnebí se v Latinské Americe nenalézá.", "Všechna tato podnebí se vyskytují v Latinské Americe."],
+            correct: 3
+        },
+        {
+            tipo: "quiz",
+            q: "Který úřad reguloval obchodní aktivity španělské Ameriky od 16. do 18. století?",
+            options: ["Consejo de Indias.", "Žádný úřad nereguloval obchod s Amerikou. Ten byl od začátku volný díky tzv. encomiendas.", "Casa de Contratación.", "Carrera de las Indias."],
+            correct: 2
+        },
+        {
+            tipo: "quiz",
+            q: "Facundo, nebo civilizace a barbarství je:",
+            options: ["Manifest argentinského romantismu.", "Epos o životě Gaučů na argentinské Pampě.", "Esej od Faustina Dominga Sarmienta, která nejlépe vystihuje ideologickou dichotomii o latinskoamerické identitě po nezávislosti od Španělska.", "Alegorická povídka o diktátorovi Juan Manuel de Rosasovi."],
+            correct: 2
+        },
+        {
+            tipo: "quiz",
+            q: "Kdo byl prezidentem Chile, když Augusto Pinochet započal vojenský převrat?",
+            options: ["Salvador Allende.", "Pablo Neruda.", "Isabel Allende.", "Fidel Castro."],
+            correct: 0
+        },
+        {
+            tipo: "quiz",
+            q: "Kdo napsal esej Ariel?",
+            options: ["José Martí.", "José Enrique Rodó.", "Domingo Faustino Sarmiento.", "William Shakespeare."],
+            correct: 1
+        },
+        {
+            tipo: "quiz",
+            q: "Která z těchto zemí není aspoň částečně pokrytá amazonským pralesem?",
+            options: ["Kolumbie.", "Peru.", "Guatemala.", "Brazílie."],
+            correct: 2
+        },
+
+        // --- PREGUNTAS TIPO TARJETA (31-39) ---
+        { 
+            tipo: "tarjeta", 
+            q: "Do kterého období řadíme básnířku, prozaičku a dramatičku Sor Juanu Inés de la Cruz?", 
+            a: "Baroko (Baroko v Novém Španělsku)" 
+        },
+        { 
+            tipo: "tarjeta", 
+            q: "Klíčovým momentem filmu Missing je převrat v jedné latinskoamerické zemi. O kterou zemi se jedná a ve kterém roce k převratu došlo?", 
+            a: "Chile, 1973" 
+        },
+        { 
+            tipo: "tarjeta", 
+            q: "V jakém roce začala vojenská diktatura Augusta Pinocheta v Chile?", 
+            a: "1973" 
+        },
+        { 
+            tipo: "tarjeta", 
+            q: "V roce 1823 vyhlásil prezident USA doktrínu, která vyjadřuje panamerikanistickou politiku USA. Jakýkoli zásah evropských mocností na americkém kontinentě měl být Spojenými státy vyhodnocen jako útok proti USA (\"Amerika Američanům\"). Jak se tato doktrína nazývá?", 
+            a: "Monroeova doktrína" 
+        },
+        { 
+            tipo: "tarjeta", 
+            q: "Kdo sepsal dílo zvané Carta de Jamaica?", 
+            a: "Simón Bolívar" 
+        },
+        { 
+            tipo: "tarjeta", 
+            q: "Uvedte jméno dobyvatele říše Inků.", 
+            a: "Francisco Pizarro" 
+        },
+        { 
+            tipo: "tarjeta", 
+            q: "V jakém roce se stala krvavá represe studentské demonstrace na mexickém náměstí Tří kultur, kterou známe jako Matanza de Tlatelolco?", 
+            a: "1968" 
+        },
+        { 
+            tipo: "tarjeta", 
+            q: "Jak se jmenovala smlouva o rozdělení světa mezi Španělskem a Portugalskem podepsaná papežem Alexandrem VI. v roce 1594?", 
+            a: "Tordesillaská smlouva" 
+        }
+        
+    ];
+
+    let palabrasNoConozco = [];
+    let palabrasYaConozco = [];
+    let filaActiva = 'no'; 
+    let idx = 0;
+    let respondido = false;
+
+    const containerEl = document.getElementById('quiz-container');
+    const statusEl = document.getElementById('status');
+
+    function guardarProgreso() {
+        localStorage.setItem('latam_quiz_palabrasNoConozco', JSON.stringify(palabrasNoConozco));
+        localStorage.setItem('latam_quiz_palabrasYaConozco', JSON.stringify(palabrasYaConozco));
+    }
+
+    function cargarProgreso() {
+        const localNoConozco = localStorage.getItem('latam_quiz_palabrasNoConozco');
+        const localYaConozco = localStorage.getItem('latam_quiz_palabrasYaConozco');
+
+        if (localNoConozco !== null && localYaConozco !== null) {
+            palabrasNoConozco = JSON.parse(localNoConozco);
+            palabrasYaConozco = JSON.parse(localYaConozco);
+        } else {
+            palabrasNoConozco = [...todasLasPalabras];
+            palabrasYaConozco = [];
+        }
+    }
+
+    function reiniciarProgreso() {
+        if (confirm("¿Seguro que quieres borrar tu progreso y empezar todo desde cero?")) {
+            localStorage.removeItem('latam_quiz_palabrasNoConozco');
+            localStorage.removeItem('latam_quiz_palabrasYaConozco');
+            palabrasNoConozco = [...todasLasPalabras];
+            palabrasYaConozco = [];
+            idx = 0;
+            filaActiva = 'no';
+            document.getElementById('btn-fila-no').className = 'row-btn active';
+            document.getElementById('btn-fila-si').className = 'row-btn';
+            update();
+        }
+    }
+
+    function getListaActiva() {
+        return filaActiva === 'no' ? palabrasNoConozco : palabrasYaConozco;
+    }
+
+    function update() {
+        const lista = getListaActiva();
+        respondido = false;
+
+        document.getElementById('count-no').innerText = palabrasNoConozco.length;
+        document.getElementById('count-si').innerText = palabrasYaConozco.length;
+
+        if (lista.length === 0) {
+            containerEl.innerHTML = `<div class="question-box">¡Fila vacía! No hay elementos aquí.</div>`;
+            statusEl.innerText = "0 / 0";
+            return;
+        }
+
+        if (idx >= lista.length) idx = Math.max(0, lista.length - 1);
+        const itemActual = lista[idx];
+
+        if (itemActual.tipo === "quiz") {
+            let opcionesHTML = "";
+            itemActual.options.forEach((opcion, i) => {
+                const letra = ["A", "B", "C", "D"][i];
+                opcionesHTML += `<button class="option-btn" id="opt-${i}" onclick="seleccionarOpcion(${i})">${letra}. ${opcion}</button>`;
+            });
+
+            containerEl.innerHTML = `
+                <div class="question-box">${itemActual.q}</div>
+                <div class="options-container">${opcionesHTML}</div>
+            `;
+        } 
+        else if (itemActual.tipo === "tarjeta") {
+            containerEl.innerHTML = `
+                <div class="tarjeta-flash" onclick="this.classList.toggle('volteada')">
+                    <div class="tarjeta-interna">
+                        <div class="cara frente">
+                            <span class="indicador">Pregunta Abierta (Toca para voltear 🔄)</span>
+                            <div class="contenido-tarjeta">${itemActual.q}</div>
+                        </div>
+                        <div class="cara dorso">
+                            <span class="indicador">Respuesta Correcta</span>
+                            <div class="contenido-tarjeta"><strong>${itemActual.a}</strong></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="controles-tarjeta">
+                    <button class="btn-tarjeta mal" onclick="clasificarTarjeta(false)">❌ No la sabía</button>
+                    <button class="btn-tarjeta bien" onclick="clasificarTarjeta(true)"> canasta ➔ ¡La supe!</button>
+                </div>
+            `;
+        }
+
+        statusEl.innerText = `${idx + 1} / ${lista.length}`;
+    }    
+
+    function seleccionarOpcion(indexSeleccionado) {
+        if (respondido) return;
+        respondido = true;
+        
+        const lista = getListaActiva();
+        const itemActual = lista[idx];
+        const indiceCorrecto = itemActual.correct;
+
+        const botones = containerEl.querySelectorAll('.option-btn');
+        botones.forEach((btn, i) => {
+            btn.disabled = true;
+            if (i === indiceCorrecto) {
+                btn.classList.add('correct'); 
+            }
+        });
+
+        const acerto = (indexSeleccionado === indiceCorrecto);
+        if (!acerto) {
+            document.getElementById(`opt-${indexSeleccionado}`).classList.add('incorrect');
+        }
+
+        setTimeout(() => {
+            moverElementoDeLista(acerto);
+        }, 1200);
+    }
+
+    function clasificarTarjeta(supoRespuesta) {
+        moverElementoDeLista(supoRespuesta);
+    }
+
+    function moverElementoDeLista(acerto) {
+        let listaOrigen = filaActiva === 'no' ? palabrasNoConozco : palabrasYaConozco;
+        let listaDestino = filaActiva === 'no' ? palabrasYaConozco : palabrasNoConozco;
+
+        if (listaOrigen.length === 0) return;
+
+        if ((filaActiva === 'no' && acerto) || (filaActiva === 'si' && !acerto)) {
+            const itemMovido = listaOrigen.splice(idx, 1)[0];
+            listaDestino.push(itemMovido);
+            guardarProgreso();
+            update();
+        } else {
+            next();
+        }
+    }
+    
+    function next() { 
+        const lista = getListaActiva();
+        if (lista.length === 0) return;
+        
+        if(idx < lista.length - 1) { 
+            idx++; 
+            update();
+        } else {
+            idx = 0;
+            update();
+        }
+    }
+    
+    function prev() { 
+        if(idx > 0) { 
+            idx--;
+            update(); 
+        } 
+    }
+
+    function shuffle() {
+        const lista = getListaActiva();
+        if (lista.length > 0) {
+            lista.sort(() => Math.random() - 0.5);
+            idx = 0;
+            guardarProgreso();
+            update();
+        }
+    } 
+ 
+    function setFila(tipo) {
+        filaActiva = tipo;
+        idx = 0;
+        
+        if (tipo === 'no') {
+            document.getElementById('btn-fila-no').className = 'row-btn active';
+            document.getElementById('btn-fila-si').className = 'row-btn';
+        } else {
+            document.getElementById('btn-fila-no').className = 'row-btn';
+            document.getElementById('btn-fila-si').className = 'row-btn active';
+        }
+        
+        update();
+    }
+
+    document.addEventListener('keydown', (e) => {
+        const lista = getListaActiva();
+        if (lista.length === 0 || idx >= lista.length) return;
+        
+        const itemActual = lista[idx];
+
+        if (itemActual.tipo === "quiz" && !respondido) {
+            if(e.key.toUpperCase() === 'A') seleccionarOpcion(0);
+            if(e.key.toUpperCase() === 'B') seleccionarOpcion(1);
+            if(e.key.toUpperCase() === 'C') seleccionarOpcion(2);
+            if(e.key.toUpperCase() === 'D') seleccionarOpcion(3);
+        }
+        if(e.code === 'ArrowRight') next();
+        if(e.code === 'ArrowLeft') prev();
+    });
+
+    cargarProgreso();
+    update();
+</script>
+</body>
+</html>
